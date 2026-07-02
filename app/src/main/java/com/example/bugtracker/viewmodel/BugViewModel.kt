@@ -2,6 +2,7 @@ package com.example.bugtracker.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.example.bugtracker.data.local.AppDatabase
 import com.example.bugtracker.data.remote.RetrofitClient
@@ -15,16 +16,22 @@ import kotlinx.coroutines.launch
 
 /**
  * Bridges the UI and the BugRepository.
- * Extends AndroidViewModel to access the Application context needed for the database.
+ * Uses SavedStateHandle to preserve in-progress form data across rotation and process death.
  */
-class BugViewModel(application: Application) : AndroidViewModel(application) {
+class BugViewModel(
+    application: Application,
+    private val savedState: SavedStateHandle
+) : AndroidViewModel(application) {
 
-    // Repository is now the single point of contact for all data operations
     private val repository: BugRepository
 
-    // _bugs is mutable internally; bugs is the read-only version exposed to the UI
     private val _bugs = MutableStateFlow<List<Bug>>(emptyList())
     val bugs: StateFlow<List<Bug>> = _bugs
+
+    // Form state preserved across rotation via SavedStateHandle
+    val draftTitle: StateFlow<String> = savedState.getStateFlow("draft_title", "")
+    val draftDescription: StateFlow<String> = savedState.getStateFlow("draft_description", "")
+    val draftPriority: StateFlow<Priority> = savedState.getStateFlow("draft_priority", Priority.MEDIUM)
 
     init {
         val database = AppDatabase.getDatabase(application)
@@ -40,13 +47,25 @@ class BugViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
-        // attempt to sync with the server on startup
         refreshBugs()
+    }
+
+    // Update draft state as the user types
+    fun updateDraftTitle(value: String) { savedState["draft_title"] = value }
+    fun updateDraftDescription(value: String) { savedState["draft_description"] = value }
+    fun updateDraftPriority(value: Priority) { savedState["draft_priority"] = value }
+
+    // Clear draft state after a bug is successfully added
+    fun clearDraft() {
+        savedState["draft_title"] = ""
+        savedState["draft_description"] = ""
+        savedState["draft_priority"] = Priority.MEDIUM
     }
 
     fun addBug(title: String, description: String, priority: Priority) {
         viewModelScope.launch {
             repository.addBug(title, description, priority)
+            clearDraft()
         }
     }
 
@@ -62,7 +81,6 @@ class BugViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // pulls latest from server — also pushes any unsynced local changes first
     fun refreshBugs() {
         viewModelScope.launch {
             repository.refreshBugs()

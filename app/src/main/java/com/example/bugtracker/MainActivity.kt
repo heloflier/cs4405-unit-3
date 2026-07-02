@@ -87,7 +87,8 @@ fun BugTrackerApp(viewModel: BugViewModel = viewModel()) {
                 onAdd = { title, description, priority ->
                     viewModel.addBug(title, description, priority)
                     showAddDialog = false
-                }
+                },
+                viewModel = viewModel
             )
         }
     }
@@ -171,10 +172,15 @@ fun BugItem(bug: Bug, onStatusChange: (Status) -> Unit, onDelete: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddBugDialog(onDismiss: () -> Unit, onAdd: (String, String, Priority) -> Unit) {
-    var title by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var priority by remember { mutableStateOf(Priority.MEDIUM) }
+fun AddBugDialog(
+    onDismiss: () -> Unit,
+    onAdd: (String, String, Priority) -> Unit,
+    viewModel: BugViewModel
+) {
+    // Draft state comes from ViewModel so it survives rotation
+    val title by viewModel.draftTitle.collectAsState()
+    val description by viewModel.draftDescription.collectAsState()
+    val priority by viewModel.draftPriority.collectAsState()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -183,18 +189,17 @@ fun AddBugDialog(onDismiss: () -> Unit, onAdd: (String, String, Priority) -> Uni
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = title,
-                    onValueChange = { title = it },
+                    onValueChange = { viewModel.updateDraftTitle(it) },
                     label = { Text("Title") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = description,
-                    onValueChange = { description = it },
+                    onValueChange = { viewModel.updateDraftDescription(it) },
                     label = { Text("Description") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Text("Priority:")
-                // Radio buttons for priority selection
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
@@ -205,7 +210,7 @@ fun AddBugDialog(onDismiss: () -> Unit, onAdd: (String, String, Priority) -> Uni
                         ) {
                             RadioButton(
                                 selected = priority == p,
-                                onClick = { priority = p }
+                                onClick = { viewModel.updateDraftPriority(p) }
                             )
                             Text(p.name, style = MaterialTheme.typography.labelSmall)
                         }
@@ -216,7 +221,7 @@ fun AddBugDialog(onDismiss: () -> Unit, onAdd: (String, String, Priority) -> Uni
         confirmButton = {
             Button(
                 onClick = { onAdd(title, description, priority) },
-                enabled = title.isNotBlank() // prevent adding bugs with empty titles
+                enabled = title.isNotBlank()
             ) {
                 Text("Add")
             }
