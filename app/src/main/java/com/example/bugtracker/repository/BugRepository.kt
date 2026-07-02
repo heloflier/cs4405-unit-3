@@ -69,6 +69,13 @@ class BugRepository(
      */
     suspend fun syncUnsyncedBugs() {
         val unsynced = bugDao.getUnsyncedBugs().first()
+        if (unsynced.isEmpty()) {
+            Log.d("BugRepository", " ----- No unsynced bugs found -----")
+            return
+        }
+
+        Log.d("BugRepository", " ----- Retrying sync for ${unsynced.size} unsynced bug(s) -----")
+
         for (bug in unsynced) {
             try {
                 val response = if (bug.id == 0) {
@@ -78,9 +85,12 @@ class BugRepository(
                 }
                 if (response.isSuccessful) {
                     bugDao.updateBug(bug.copy(isSynced = true))
+                    Log.d("BugRepository", " ----- Bug ${bug.id} synced successfully -----")
+                } else {
+                    Log.d("BugRepository", " ----- Sync failed for bug ${bug.id}: server returned ${response.code()} -----")
                 }
             } catch (e: Exception) {
-                Log.d("BugRepository", "Retry failed for bug ${bug.id}: ${e.message}")
+                Log.d("BugRepository", " ----- Retry failed for bug ${bug.id}: ${e.message} ----- ")
             }
         }
     }
