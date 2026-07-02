@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -86,7 +87,8 @@ fun BugTrackerApp(viewModel: BugViewModel = viewModel()) {
                 onAdd = { title, description, priority ->
                     viewModel.addBug(title, description, priority)
                     showAddDialog = false
-                }
+                },
+                viewModel = viewModel
             )
         }
     }
@@ -94,7 +96,6 @@ fun BugTrackerApp(viewModel: BugViewModel = viewModel()) {
 
 @Composable
 fun BugItem(bug: Bug, onStatusChange: (Status) -> Unit, onDelete: () -> Unit) {
-    // Format the creation timestamp for display
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()) }
 
     Card(
@@ -102,7 +103,26 @@ fun BugItem(bug: Bug, onStatusChange: (Status) -> Unit, onDelete: () -> Unit) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = bug.title, style = MaterialTheme.typography.titleMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                Text(text = bug.title, style = MaterialTheme.typography.titleMedium)
+                if (!bug.isSynced) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f),
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Text(
+                            text = "Unsynced",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onTertiary,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(4.dp))
             Text(text = bug.description, style = MaterialTheme.typography.bodyMedium)
             Spacer(modifier = Modifier.height(4.dp))
@@ -130,21 +150,18 @@ fun BugItem(bug: Bug, onStatusChange: (Status) -> Unit, onDelete: () -> Unit) {
                 modifier = Modifier.padding(top = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Only show Start if not already in progress
                 Button(
                     onClick = { onStatusChange(Status.IN_PROGRESS) },
                     enabled = bug.status != Status.IN_PROGRESS
                 ) {
                     Text("Start")
                 }
-                // Only show Close if not already closed
                 Button(
                     onClick = { onStatusChange(Status.CLOSED) },
                     enabled = bug.status != Status.CLOSED
                 ) {
                     Text("Close")
                 }
-                // Delete removes the bug entirely
                 OutlinedButton(onClick = onDelete) {
                     Text("Delete")
                 }
@@ -155,10 +172,15 @@ fun BugItem(bug: Bug, onStatusChange: (Status) -> Unit, onDelete: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddBugDialog(onDismiss: () -> Unit, onAdd: (String, String, Priority) -> Unit) {
-    var title by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var priority by remember { mutableStateOf(Priority.MEDIUM) }
+fun AddBugDialog(
+    onDismiss: () -> Unit,
+    onAdd: (String, String, Priority) -> Unit,
+    viewModel: BugViewModel
+) {
+    // Draft state comes from ViewModel so it survives rotation
+    val title by viewModel.draftTitle.collectAsState()
+    val description by viewModel.draftDescription.collectAsState()
+    val priority by viewModel.draftPriority.collectAsState()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -167,18 +189,17 @@ fun AddBugDialog(onDismiss: () -> Unit, onAdd: (String, String, Priority) -> Uni
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = title,
-                    onValueChange = { title = it },
+                    onValueChange = { viewModel.updateDraftTitle(it) },
                     label = { Text("Title") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = description,
-                    onValueChange = { description = it },
+                    onValueChange = { viewModel.updateDraftDescription(it) },
                     label = { Text("Description") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Text("Priority:")
-                // Radio buttons for priority selection
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
@@ -189,7 +210,7 @@ fun AddBugDialog(onDismiss: () -> Unit, onAdd: (String, String, Priority) -> Uni
                         ) {
                             RadioButton(
                                 selected = priority == p,
-                                onClick = { priority = p }
+                                onClick = { viewModel.updateDraftPriority(p) }
                             )
                             Text(p.name, style = MaterialTheme.typography.labelSmall)
                         }
@@ -200,7 +221,7 @@ fun AddBugDialog(onDismiss: () -> Unit, onAdd: (String, String, Priority) -> Uni
         confirmButton = {
             Button(
                 onClick = { onAdd(title, description, priority) },
-                enabled = title.isNotBlank() // prevent adding bugs with empty titles
+                enabled = title.isNotBlank()
             ) {
                 Text("Add")
             }
