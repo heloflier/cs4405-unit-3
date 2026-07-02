@@ -83,7 +83,10 @@ fun BugTrackerApp(viewModel: BugViewModel = viewModel()) {
 
         if (showAddDialog) {
             AddBugDialog(
-                onDismiss = { showAddDialog = false },
+                onDismiss = {
+                    viewModel.clearDraft()  // clear draft when canceled
+                    showAddDialog = false
+                },
                 onAdd = { title, description, priority ->
                     viewModel.addBug(title, description, priority)
                     showAddDialog = false
