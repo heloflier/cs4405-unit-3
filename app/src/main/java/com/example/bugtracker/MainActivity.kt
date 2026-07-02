@@ -4,7 +4,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,6 +12,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -40,7 +40,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun BugTrackerApp(viewModel: BugViewModel = viewModel()) {
     val bugs by viewModel.bugs.collectAsState()
-    var showAddDialog by remember { mutableStateOf(false) }
+    val showAddDialog by viewModel.showAddDialog.collectAsState()
 
     Scaffold(
         topBar = {
@@ -55,7 +55,7 @@ fun BugTrackerApp(viewModel: BugViewModel = viewModel()) {
         },
         floatingActionButton = {
             // FAB opens the add bug dialog
-            FloatingActionButton(onClick = { showAddDialog = true }) {
+            FloatingActionButton(onClick = { viewModel.openAddDialog() }) {
                 Icon(Icons.Default.Add, contentDescription = "Add Bug")
             }
         }
@@ -85,11 +85,11 @@ fun BugTrackerApp(viewModel: BugViewModel = viewModel()) {
             AddBugDialog(
                 onDismiss = {
                     viewModel.clearDraft()  // clear draft when canceled
-                    showAddDialog = false
+                    viewModel.closeAddDialog()
                 },
                 onAdd = { title, description, priority ->
                     viewModel.addBug(title, description, priority)
-                    showAddDialog = false
+                    viewModel.closeAddDialog()
                 },
                 viewModel = viewModel
             )
@@ -109,7 +109,7 @@ fun BugItem(bug: Bug, onStatusChange: (Status) -> Unit, onDelete: () -> Unit) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(text = bug.title, style = MaterialTheme.typography.titleMedium)
                 if (!bug.isSynced) {
@@ -207,9 +207,9 @@ fun AddBugDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    Priority.values().forEach { p ->
+                    Priority.entries.forEach { p ->
                         Column(
-                            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             RadioButton(
                                 selected = priority == p,

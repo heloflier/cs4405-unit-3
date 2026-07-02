@@ -32,6 +32,7 @@ class BugViewModel(
     val draftTitle: StateFlow<String> = savedState.getStateFlow("draft_title", "")
     val draftDescription: StateFlow<String> = savedState.getStateFlow("draft_description", "")
     val draftPriority: StateFlow<Priority> = savedState.getStateFlow("draft_priority", Priority.MEDIUM)
+    val showAddDialog: StateFlow<Boolean> = savedState.getStateFlow("show_add_dialog", false)
 
     init {
         val database = AppDatabase.getDatabase(application)
@@ -49,6 +50,9 @@ class BugViewModel(
 
         refreshBugs()
     }
+
+    fun openAddDialog() { savedState["show_add_dialog"] = true }
+    fun closeAddDialog() { savedState["show_add_dialog"] = false }
 
     // Update draft state as the user types
     fun updateDraftTitle(value: String) { savedState["draft_title"] = value }
