@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -42,7 +43,14 @@ fun BugTrackerApp(viewModel: BugViewModel = viewModel()) {
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Bug Tracker") })
+            TopAppBar(
+                title = { Text("Bug Tracker") },
+                actions = {
+                    IconButton(onClick = { viewModel.refreshBugs() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Sync")
+                    }
+                }
+            )
         },
         floatingActionButton = {
             // FAB opens the add bug dialog
