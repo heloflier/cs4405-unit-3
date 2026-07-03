@@ -32,16 +32,16 @@ class BugRepository(
             status = Status.OPEN,
             isSynced = false
         )
-        // offline-first: save locally before attempting network call
-        bugDao.insertBug(newBug)
+        // insertBug returns the new row ID assigned by Room
+        val assignedId = bugDao.insertBug(newBug)
+        val bugWithId = newBug.copy(id = assignedId.toInt())
 
         try {
-            val response = bugApiService.createBug(newBug)
+            val response = bugApiService.createBug(bugWithId)
             if (response.isSuccessful) {
-                bugDao.updateBug(newBug.copy(isSynced = true))
+                bugDao.updateBug(bugWithId.copy(isSynced = true))
             }
         } catch (e: Exception) {
-            // sync will be retried later via syncUnsyncedBugs()
             Log.d("BugRepository", "Initial sync failed: ${e.message}")
         }
     }
@@ -102,6 +102,8 @@ class BugRepository(
         syncUnsyncedBugs()
         try {
             val remoteBugs = bugApiService.getBugs()
+            // clear local data first to avoid duplicates from ID mismatches
+            bugDao.deleteAllBugs()
             for (bug in remoteBugs) {
                 bugDao.insertBug(bug.copy(isSynced = true))
             }

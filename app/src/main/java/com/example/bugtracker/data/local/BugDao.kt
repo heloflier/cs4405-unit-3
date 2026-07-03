@@ -12,8 +12,11 @@ interface BugDao {
     @Query("SELECT * FROM bugs WHERE isSynced = 0")
     fun getUnsyncedBugs(): Flow<List<Bug>>
 
+    @Query("DELETE FROM bugs")
+    suspend fun deleteAllBugs()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertBug(bug: Bug)
+    suspend fun insertBug(bug: Bug): Long
 
     @Update
     suspend fun updateBug(bug: Bug)
